@@ -12,11 +12,11 @@
 #define ORIGINAL_IMAGE_WIDTH 192
 #define ORIGINAL_IMAGE_HEIGHT 192
 
-#if DISPLAY_RGB_IMAGE 
-#define FORMAT_MULTIPLY_FACTOR 3    
+#if DISPLAY_RGB_IMAGE
+#define FORMAT_MULTIPLY_FACTOR 3
 #else
 #define FORMAT_MULTIPLY_FACTOR 1
-#endif /* DISPLAY_RGB_IMAGE */   
+#endif /* DISPLAY_RGB_IMAGE */
 
 void runPostProcessing(uint8_t *img_in,TfLiteTensor* model_output[2],std::vector<arm::app::DetectionResult> & results_out);
 
