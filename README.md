@@ -1,9 +1,9 @@
-# Face_detection_example_arm_u55
+### Face_detection_example_arm_u55
 Face detection demo deployed on Arm U55 AI accelerator.
 
-# Installation guide, tested on Ubuntu 20.04:
+### Installation guide, tested on Ubuntu 20.04:
 
-# Install necessary packages
+### Install necessary packages
 
 sudo apt-get update 
 
@@ -25,7 +25,7 @@ sudo apt install python3.8-venv
 
 sudo apt install python3-pip 
 
-# Download and install ARM GCC cross-compiler
+### Download and install ARM GCC cross-compiler
 
 wget  https://developer.arm.com/-/media/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-arm-none-eabi.tar.xz
 
@@ -55,7 +55,7 @@ sudo ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/lib
 
 
 
-# Download and install FVP simulation platform
+### Download and install FVP simulation platform
 
 
 wget https://developer.arm.com/-/media/Arm%20Developer%20Community/Downloads/OSS/FVP/Corstone-300/FVP_Corstone_SSE-300_11.15_24.tgz
@@ -66,7 +66,7 @@ tar -vxf FVP_Corstone_SSE-300_11.15_24.tgz
 ./FVP_Corstone_SSE-300.sh 
 
 
-# Download and install ARM ml-embedded-evaluation-kit
+### Download and install ARM ml-embedded-evaluation-kit
 
 
 export GIT_SSL_NO_VERIFY=1
@@ -82,12 +82,12 @@ rm -rf ./dependencies
 python3 ./download_dependencies.py
 
 
-# Validate default build
+### Validate default build
 
 ./build_default.py
 
 
-# Clone Emza face detection demo
+### Clone Emza face detection demo
 
 cd ~
 
@@ -104,12 +104,12 @@ git am *.patch
 ./build_default.py
 
 
-# Run object detection example
+### Run object detection example
 
 ~/FVP_Corstone_SSE-300/models/Linux64_GCC-6.4/FVP_Corstone_SSE-300_Ethos-U55 -C ethosu.num_macs=128 -a ~/ml-embedded-evaluation-kit/cmake-build-mps3-sse-300-ethos-u55-128-gnu/bin/ethos-u-object_detection.axf
 
 
-# Run object detection unit test
+### Run object detection unit test
 
 cd cmake-build-mps3-sse-300-ethos-u55-128-gnu/
 
