@@ -231,61 +231,110 @@ network creat_network(int input_w, int input_h, int num_classes, int num_branch,
 
 // NMS part
 
-float overlap(float x1, float w1, float x2, float w2)
-{
-    float l1 = x1 - w1/2;
-    float l2 = x2 - w2/2;
-    float left = l1 > l2 ? l1 : l2;
-    float r1 = x1 + w1/2;
-    float r2 = x2 + w2/2;
-    float right = r1 < r2 ? r1 : r2;
-    return right - left;
-}
+/*
+float overlap -> Calc1DOverlap
+*/
 
-float box_intersection(box a, box b)
+float Calc1DOverlap(float x1_center, float width1, float x2_center, float width2)
 {
-    float w = overlap(a.x, a.w, b.x, b.w);
-    float h = overlap(a.y, a.h, b.y, b.h);
-    if(w < 0 || h < 0) return 0;
-    float area = w*h;
-    return area;
-}
-
-float box_union(box a, box b)
-{
-    float i = box_intersection(a, b);
-    float u = a.w*a.h + b.w*b.h - i;
-    return u;
-}
-
-float box_iou(box a, box b)
-{
-    float I = box_intersection(a, b);
-    float U = box_union(a, b);
-    if (I == 0 || U == 0) {
-        return 0;
+    float left_1 = x1_center - width1/2;
+    float left_2 = x2_center - width2/2;
+    float leftest;
+    if (left_1 > left_2) {
+        leftest = left_1;
+    } else {
+        leftest = left_2;    
     }
-    return I / U;
+        
+    float right_1 = x1_center + width1/2;
+    float right_2 = x2_center + width2/2;
+    float rightest;
+    if (right_1 < right_2) {
+        rightest = right_1;
+    } else {
+        rightest = right_2;    
+    }
+        
+    return rightest - leftest;
 }
 
-bool det_comparator(detection &pa, detection &pb)
+
+/*
+float box_intersection -> CalcBoxIntersect
+*/
+
+float CalcBoxIntersect(box box1, box box2)
 {
-    return pa.prob[sort_class] > pb.prob[sort_class];
+    float width = Calc1DOverlap(box1.x, box1.w, box2.x, box2.w);
+    if (width < 0) return 0;
+    float height = Calc1DOverlap(box1.y, box1.h, box2.y, box2.h);
+    if (height < 0) return 0;
+    
+    float total_area = width*height;
+    return total_area;
 }
 
-void do_nms_sort(std::forward_list<detection> &dets, int classes, float thresh)
+
+/*
+float box_union -> CalcBoxUnion
+*/
+
+
+float CalcBoxUnion(box box1, box box2)
+{
+    float boxes_intersection = CalcBoxIntersect(box1, box2);
+    float boxes_union = box1.w*box1.h + box2.w*box2.h - boxes_intersection;
+    return boxes_union;
+}
+
+
+/*
+float box_iou -> CalcBoxIOU
+*/
+
+
+float CalcBoxIOU(box box1, box box2)
+{
+    float boxes_intersection = CalcBoxIntersect(box1, box2); 
+    
+    if (boxes_intersection == 0) return 0;    
+    
+    float boxes_union = CalcBoxUnion(box1, box2);
+
+    if (boxes_union == 0) return 0;    
+    
+    return boxes_intersection / boxes_union;
+}
+
+
+/*
+bool det_comparator ->CompareProbs
+*/
+
+bool CompareProbs(detection &prob1, detection &prob2)
+{
+    return prob1.prob[sort_class] > prob2.prob[sort_class];
+}
+
+
+/*
+void do_nms_sort -> CalcNMS
+*/
+
+
+void CalcNMS(std::forward_list<detection> &detections, int classes, float iou_threshold)
 {
     int k;
     
     for (k = 0; k < classes; ++k) {
         sort_class = k;
-        dets.sort(det_comparator);
+        detections.sort(CompareProbs);
         
-        for (std::forward_list<detection>::iterator it=dets.begin(); it != dets.end(); ++it){
+        for (std::forward_list<detection>::iterator it=detections.begin(); it != detections.end(); ++it){
             if (it->prob[k] == 0) continue;
-            for (std::forward_list<detection>::iterator itc=std::next(it, 1); itc != dets.end(); ++itc){
+            for (std::forward_list<detection>::iterator itc=std::next(it, 1); itc != detections.end(); ++itc){
                 if (itc->prob[k] == 0) continue;
-                if (box_iou(it->bbox, itc->bbox) > thresh) {
+                if (CalcBoxIOU(it->bbox, itc->bbox) > iou_threshold) {
                     itc->prob[k] = 0;
                 }
             }
@@ -294,32 +343,36 @@ void do_nms_sort(std::forward_list<detection> &dets, int classes, float thresh)
 }
 
 
-boxabs box_c(box a, box b) 
+/*
+boxabs box_c ->CalcUnionBoundary
+*/
+
+boxabs CalcUnionBoundary(box box1, box box2) 
 {
-    boxabs ba;//
-    ba.top = 0;
-    ba.bot = 0;
-    ba.left = 0;
-    ba.right = 0;
-    ba.top = fmin(a.y - a.h / 2, b.y - b.h / 2);
-    ba.bot = fmax(a.y + a.h / 2, b.y + b.h / 2);
-    ba.left = fmin(a.x - a.w / 2, b.x - b.w / 2);
-    ba.right = fmax(a.x + a.w / 2, b.x + b.w / 2);
-    return ba;
+    boxabs union_boundary;
+    union_boundary.top = fmin(box1.y - box1.h / 2, box2.y - box2.h / 2);
+    union_boundary.bot = fmax(box1.y + box1.h / 2, box2.y + box2.h / 2);
+    union_boundary.left = fmin(box1.x - box1.w / 2, box2.x - box2.w / 2);
+    union_boundary.right = fmax(box1.x + box1.w / 2, box2.x + box2.w / 2);
+    return union_boundary;
 }
 
 
-float box_diou(box a, box b)
+/*
+float box_diou -> CalcDistanceIOU
+*/
+
+float CalcDistanceIOU(box box1, box box2)
 {
-    boxabs ba = box_c(a, b);
-    float w = ba.right - ba.left;
-    float h = ba.bot - ba.top;
+    boxabs box_union_boundary = CalcUnionBoundary(box1, box2);
+    float w = box_union_boundary.right - box_union_boundary.left;
+    float h = box_union_boundary.bot - box_union_boundary.top;
     float c = w * w + h * h;
-    float iou = box_iou(a, b);
+    float iou = CalcBoxIOU(box1, box2);
     if (c == 0) {
         return iou;
     }
-    float d = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+    float d = (box1.x - box2.x) * (box1.x - box2.x) + (box1.y - box2.y) * (box1.y - box2.y);
     float u = pow(d / c, 0.6);
     float diou_term = u;
 
@@ -327,19 +380,22 @@ float box_diou(box a, box b)
 }
 
 
-void diounms_sort(std::forward_list<detection> &dets, int classes, float thresh)
+/*
+diounms_sort -> CalcNMS
+*/
+void CalcDIOU_NMS(std::forward_list<detection> &detections, int classes, float diou_threshold)
 {
     int k;
     
     for (k = 0; k < classes; ++k) {
         sort_class = k;
-        dets.sort(det_comparator);
+        detections.sort(CompareProbs);
         
-        for (std::forward_list<detection>::iterator it=dets.begin(); it != dets.end(); ++it){
+        for (std::forward_list<detection>::iterator it=detections.begin(); it != detections.end(); ++it){
             if (it->prob[k] == 0) continue;
-            for (std::forward_list<detection>::iterator itc=std::next(it, 1); itc != dets.end(); ++itc){
+            for (std::forward_list<detection>::iterator itc=std::next(it, 1); itc != detections.end(); ++itc){
                 if (itc->prob[k] == 0) continue;
-                if (box_diou(it->bbox, itc->bbox) > thresh) {
+                if (CalcDistanceIOU(it->bbox, itc->bbox) > diou_threshold) {
                     itc->prob[k] = 0;
                 }
             }
